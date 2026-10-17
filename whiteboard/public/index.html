@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whiteboard</title>
+<style>
+  :root { --bg:#d8dde2; --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; --line:#3a4756; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px 16px 120px;
+  }
+  .stage { position: relative; width: min(100%, calc((100vh - 140px) * 1.6)); }
+  canvas {
+    display: block; width: 100%; aspect-ratio: 8 / 5; background: var(--board);
+    border-radius: 6px; box-shadow: 0 8px 24px rgba(29,39,51,.18);
+    touch-action: none; cursor: crosshair;
+  }
+  .cursors { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .cursor {
+    position: absolute; width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid #fff; transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 1px rgba(0,0,0,.25); transition: left .06s linear, top .06s linear;
+  }
+  .tray {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center;
+    background: var(--tray); color: var(--ink); padding: 10px 14px; border-radius: 14px;
+    max-width: calc(100% - 24px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  }
+  .group { display: flex; gap: 8px; align-items: center; }
+  .sep { width: 1px; height: 22px; background: var(--line); }
+  .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; }
+  .swatch[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
+  button.tool {
+    background: transparent; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer;
+  }
+  button.tool:hover { background: #2a3644; }
+  button.tool[aria-pressed="true"] { background: var(--ink); color: var(--tray); }
+  input[type=range] { width: 90px; accent-color: #7cb2ff; }
+  :focus-visible { outline: 2px solid #7cb2ff; outline-offset: 2px; }
+  .status { display: flex; align-items: center; gap: 6px; color: #9fb0c3; font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #e5534b; }
+  .dot.on { background: #3fb950; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <canvas id="board" aria-label="Shared whiteboard"></canvas>
+    <div class="cursors" id="cursors"></div>
+  </div>
+
+  <div class="tray" role="toolbar" aria-label="Drawing tools">
+    <div class="group" id="swatches"></div>
+    <div class="sep"></div>
+    <div class="group">
+      <label for="size">Size</label>
+      <input id="size" type="range" min="2" max="24" value="4">
+    </div>
+    <button class="tool" id="eraser" aria-pressed="false">Eraser</button>
+    <div class="sep"></div>
+    <button class="tool" id="undo">Undo</button>
+    <button class="tool" id="clear">Clear board</button>
+    <button class="tool" id="copy">Copy link</button>
+    <div class="sep"></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="people">connecting</span></div>
+  </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(() => {
+  const W = 1600, H = 1000, BOARD = '#fdfdfc';
+  const COLORS = ['#1d2733', '#e5484d', '#f5a524', '#2f9e6f', '#2f6fed', '#8b5cf6'];
+
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  canvas.width = W; canvas.height = H;
+
+  const roomId = location.pathname.split('/').pop();
+  let clientId;
+  try {
+    clientId = localStorage.getItem('wb-client') || crypto.randomUUID();
+    localStorage.setItem('wb-client', clientId);
+  } catch { clientId = crypto.randomUUID(); }
+
+  // ---- Local state ----
+  let strokes = [];            // authoritative-ish copy: [{id,userId,color,width,points:[[x,y]]}]
+  const byId = new Map();
+  let color = COLORS[0], size = 4, erasing = false;
+
+  // ---- Rendering ----
+  function style(s) {
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color;
+    ctx.lineWidth = s.width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  }
+  function drawFrom(s, start) {
+    style(s);
+    const p = s.points;
+    if (p.length === 1) {
+      ctx.beginPath(); ctx.arc(p[0][0], p[0][1], s.width / 2, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    ctx.beginPath();
+    const i0 = Math.max(start - 1, 0);
+    ctx.moveTo(p[i0][0], p[i0][1]);
+    for (let i = i0 + 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+    ctx.stroke();
+  }
+  function redraw() {
+    ctx.fillStyle = BOARD; ctx.fillRect(0, 0, W, H);
+    for (const s of strokes) if (s.points.length) drawFrom(s, 0);
+  }
+  function setStrokes(list) {
+    strokes = list; byId.clear();
+    for (const s of strokes) byId.set(s.id, s);
+    redraw();
+  }
+
+  // ---- Socket ----
+  const socket = io();
+  const dot = document.getElementById('dot');
+  const people = document.getElementById('people');
+
+  socket.on('connect', () => {
+    dot.classList.add('on');
+    socket.emit('join', { room: roomId, clientId });
+  });
+  socket.on('disconnect', () => { dot.classList.remove('on'); people.textContent = 'reconnecting'; });
+
+  socket.on('init', ({ strokes: serverStrokes }) => {
+    // Re-send anything I drew that the server never received (offline or dropped connection).
+    const known = new Set(serverStrokes.map((s) => s.id));
+    const mine = strokes.filter((s) => s.userId === clientId && !known.has(s.id));
+    setStrokes([...serverStrokes, ...mine]);
+    for (const s of mine) socket.emit('stroke:start', s);
+  });
+  socket.on('presence', (n) => { people.textContent = n === 1 ? 'just you' : n + ' people here'; });
+  socket.on('stroke:start', (s) => { strokes.push(s); byId.set(s.id, s); drawFrom(s, 0); });
+  socket.on('stroke:points', ({ id, points }) => {
+    const s = byId.get(id); if (!s) return;
+    const start = s.points.length;
+    s.points.push(...points);
+    drawFrom(s, start);
+  });
+  socket.on('stroke:remove', (id) => {
+    strokes = strokes.filter((s) => s.id !== id); byId.delete(id); redraw();
+  });
+  socket.on('clear', () => setStrokes([]));
+
+  // ---- Remote cursors ----
+  const cursorLayer = document.getElementById('cursors');
+  const cursors = new Map();
+  socket.on('cursor', ({ id, x, y, color: c }) => {
+    let el = cursors.get(id);
+    if (!el) {
+      el = document.createElement('div'); el.className = 'cursor';
+      cursorLayer.appendChild(el); cursors.set(id, el);
+    }
+    el.style.background = c;
+    el.style.left = (x / W * 100) + '%';
+    el.style.top = (y / H * 100) + '%';
+  });
+  socket.on('cursor:gone', (id) => { cursors.get(id)?.remove(); cursors.delete(id); });
+
+  // ---- Drawing input ----
+  let current = null, pending = [], flushTimer = null, lastCursor = 0;
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    return [Math.round((e.clientX - r.left) / r.width * W), Math.round((e.clientY - r.top) / r.height * H)];
+  }
+  function flush() {
+    flushTimer = null;
+    if (current && pending.length) {
+      socket.emit('stroke:points', { id: current.id, points: pending });
+      pending = [];
+    }
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    current = {
+      id: crypto.randomUUID(), userId: clientId,
+      color: erasing ? BOARD : color, width: erasing ? size * 4 : size,
+      points: [pos(e)],
+    };
+    strokes.push(current); byId.set(current.id, current);
+    socket.emit('stroke:start', current);
+    drawFrom(current, 0);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const p = pos(e);
+    const now = performance.now();
+    if (now - lastCursor > 40) {
+      lastCursor = now;
+      socket.emit('cursor', { x: p[0], y: p[1], color: erasing ? '#9aa5b1' : color });
+    }
+    if (!current) return;
+    const start = current.points.length;
+    current.points.push(p);
+    drawFrom(current, start);
+    pending.push(p);
+    if (!flushTimer) flushTimer = setTimeout(flush, 40); // batch: ~25 messages/sec max
+  });
+
+  const end = () => { if (!current) return; flush(); current = null; };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+
+  // ---- Toolbar ----
+  const swatchBox = document.getElementById('swatches');
+  COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'swatch'; b.style.background = c; b.setAttribute('aria-label', 'Colour ' + c);
+    b.setAttribute('aria-pressed', i === 0);
+    b.onclick = () => {
+      color = c; setErasing(false);
+      swatchBox.querySelectorAll('.swatch').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    };
+    swatchBox.appendChild(b);
+  });
+
+  const eraserBtn = document.getElementById('eraser');
+  function setErasing(v) { erasing = v; eraserBtn.setAttribute('aria-pressed', v); }
+  eraserBtn.onclick = () => setErasing(!erasing);
+
+  document.getElementById('size').oninput = (e) => { size = +e.target.value; };
+  const undo = () => socket.emit('undo');
+  document.getElementById('undo').onclick = undo;
+  document.getElementById('clear').onclick = () => {
+    if (confirm('Clear the board for everyone in this room?')) socket.emit('clear');
+  };
+  const copyBtn = document.getElementById('copy');
+  copyBtn.onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); copyBtn.textContent = 'Link copied'; }
+    catch { copyBtn.textContent = 'Copy failed'; }
+    setTimeout(() => (copyBtn.textContent = 'Copy link'), 1500);
+  };
+  addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  });
+})();
+</script>
+</body>
+</html>

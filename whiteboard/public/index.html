@@ -5,41 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Whiteboard</title>
 <style>
-  :root { --bg:#d8dde2; --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; --line:#3a4756; }
+  :root { --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; --line:#3a4756; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body {
-    background: var(--bg);
-    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    display: flex; align-items: center; justify-content: center;
-    padding: 16px 16px 120px;
-  }
-  .stage { position: relative; width: min(100%, calc((100vh - 140px) * 1.6)); }
-  canvas {
-    display: block; width: 100%; aspect-ratio: 8 / 5; background: var(--board);
-    border-radius: 6px; box-shadow: 0 8px 24px rgba(29,39,51,.18);
-    touch-action: none; cursor: crosshair;
-  }
-  .cursors { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-  .cursor {
-    position: absolute; width: 12px; height: 12px; border-radius: 50%;
-    border: 2px solid #fff; transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 1px rgba(0,0,0,.25); transition: left .06s linear, top .06s linear;
-  }
-  .tray {
-    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
-    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center;
-    background: var(--tray); color: var(--ink); padding: 10px 14px; border-radius: 14px;
-    max-width: calc(100% - 24px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
-  }
+  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--tray);
+         display: flex; align-items: center; justify-content: center; padding: 64px 16px 120px; }
+  @media (min-width: 1100px) { body.chat-open { padding-left: 304px; } body.chat-open .tray { left: calc(50% + 144px); } }
+
+  .back { position: fixed; top: 16px; left: 16px; z-index: 2; display: inline-flex; align-items: center; gap: 6px;
+          padding: 8px 12px; border-radius: 8px; text-decoration: none; color: var(--tray); background: var(--board); border: 1px solid #b8c0c8; }
+  .back:hover { background: #fff; }
+  .roomname { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); max-width: 30vw; z-index: 1; padding: 4px 12px;
+              border-radius: 8px; background: rgba(253,253,252,.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .roomname:empty { display: none; }
+
+  .stage { position: relative; width: min(100%, calc((100vh - 200px) * 1.6)); }
+  canvas { display: block; width: 100%; aspect-ratio: 8 / 5; background-color: var(--board); border-radius: 6px;
+           box-shadow: 0 8px 24px rgba(29,39,51,.18); touch-action: none; cursor: crosshair; }
+  canvas.grid { background-image: linear-gradient(rgba(29,39,51,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(29,39,51,.09) 1px, transparent 1px);
+                background-size: 2.5% 4%; }
+
+  .cursors { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: 6px; }
+  .cursor { position: absolute; color: var(--c, #1d2733); transition: left .06s linear, top .06s linear; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
+  .cursor svg { display: block; }
+  .cursor .tag { position: absolute; left: 14px; top: 14px; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+                 background: var(--tray); color: #fff; font-size: 12px; border: 2px solid var(--c, #1d2733); }
+  .cursors.no-names .tag { display: none; }
+
+  .chat { position: fixed; left: 16px; top: 64px; bottom: 16px; width: 272px; z-index: 3; display: none; flex-direction: column;
+          background: rgba(253,253,252,.95); border-radius: 12px; box-shadow: 0 8px 24px rgba(29,39,51,.22); overflow: hidden; }
+  body.chat-open .chat { display: flex; }
+  .chat header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #dfe4e9; font-weight: 600; }
+  .chat header button, .chat-toggle { font: inherit; border: 1px solid #b8c0c8; background: #fff; color: var(--tray); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { overflow-wrap: anywhere; }
+  .msg b { font-weight: 600; }
+  .msg time { margin-left: 6px; font-size: 11px; color: #7b8794; }
+  .msg.mine b { color: #2f6fed; }
+  .msg p { margin: 0; }
+  .chat form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid #dfe4e9; }
+  .chat input { flex: 1; min-width: 0; padding: 8px 10px; font: inherit; border: 1px solid #b8c0c8; border-radius: 8px; }
+  .chat form button { font: inherit; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--tray); color: #fff; cursor: pointer; }
+  .chat-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 3; display: none; padding: 8px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+  body:not(.chat-open) .chat-toggle { display: block; }
+  .unread { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: #e5484d; color: #fff; font-size: 12px; text-align: center; }
+  .unread:empty { display: none; }
+
+  .tray { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 12px;
+          align-items: center; justify-content: center; background: var(--tray); color: var(--ink); padding: 10px 14px;
+          border-radius: 14px; max-width: calc(100% - 24px); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
   .group { display: flex; gap: 8px; align-items: center; }
   .sep { width: 1px; height: 22px; background: var(--line); }
   .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; }
   .swatch[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
-  button.tool {
-    background: transparent; color: var(--ink); border: 1px solid var(--line);
-    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer;
-  }
+  button.tool { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
   button.tool:hover { background: #2a3644; }
   button.tool[aria-pressed="true"] { background: var(--ink); color: var(--tray); }
   input[type=range] { width: 90px; accent-color: #7cb2ff; }
@@ -47,9 +66,27 @@
   .status { display: flex; align-items: center; gap: 6px; color: #9fb0c3; font-size: 13px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #e5534b; }
   .dot.on { background: #3fb950; }
+
+  .block { position: fixed; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; background: rgba(29,39,51,.6); }
+  .block > div { background: var(--board); padding: 24px 28px; border-radius: 12px; text-align: center; max-width: 340px; }
+  .block h2 { margin: 0 0 6px; }
+  .block a { display: inline-block; margin-top: 8px; padding: 8px 14px; border-radius: 8px; background: var(--tray); color: #fff; text-decoration: none; }
+  .toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 8px 14px; border-radius: 8px;
+           background: var(--tray); color: #fff; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
 </style>
 </head>
-<body>
+<body data-page="board">
+  <a class="back" href="/"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back to home</a>
+  <div class="roomname" id="roomname"></div>
+
+  <aside class="chat" id="chat" aria-label="Room chat">
+    <header><span>Chat</span><button type="button" id="chatClose" aria-label="Hide chat">Hide</button></header>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <form id="chatForm"><input id="chatInput" maxlength="300" placeholder="Message the room" autocomplete="off" aria-label="Chat message"><button type="submit">Send</button></form>
+  </aside>
+  <button class="chat-toggle" id="chatToggle" type="button">Chat<span class="unread" id="unread"></span></button>
+
   <div class="stage">
     <canvas id="board" aria-label="Shared whiteboard"></canvas>
     <div class="cursors" id="cursors"></div>
@@ -58,10 +95,7 @@
   <div class="tray" role="toolbar" aria-label="Drawing tools">
     <div class="group" id="swatches"></div>
     <div class="sep"></div>
-    <div class="group">
-      <label for="size">Size</label>
-      <input id="size" type="range" min="2" max="24" value="4">
-    </div>
+    <div class="group"><label for="size">Size</label><input id="size" type="range" min="2" max="24" value="4"></div>
     <button class="tool" id="eraser" aria-pressed="false">Eraser</button>
     <div class="sep"></div>
     <button class="tool" id="undo">Undo</button>
@@ -71,40 +105,50 @@
     <div class="status"><span class="dot" id="dot"></span><span id="people">connecting</span></div>
   </div>
 
+  <dialog class="wb-dialog" id="pwDlg">
+    <form id="pwForm">
+      <h2>This room is private</h2>
+      <p>Enter the password to join.</p>
+      <label class="wb-field">Password<input id="pwInput" type="password" required autocomplete="off"></label>
+      <p class="wb-err" id="pwErr" role="alert"></p>
+      <div class="wb-actions"><a class="wb-btn" href="/">Back to home</a><button class="wb-btn primary" type="submit">Join room</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status"></div>
+
+<script src="/sidebar.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 (() => {
-  const W = 1600, H = 1000, BOARD = '#fdfdfc';
+  const W = 1600, H = 1000;
   const COLORS = ['#1d2733', '#e5484d', '#f5a524', '#2f9e6f', '#2f6fed', '#8b5cf6'];
+  const $ = (id) => document.getElementById(id);
+  const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  const ss = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} } };
 
-  const canvas = document.getElementById('board');
-  const ctx = canvas.getContext('2d');
+  const canvas = $('board'), ctx = canvas.getContext('2d');
   canvas.width = W; canvas.height = H;
-
   const roomId = location.pathname.split('/').pop();
-  let clientId;
-  try {
-    clientId = localStorage.getItem('wb-client') || crypto.randomUUID();
-    localStorage.setItem('wb-client', clientId);
-  } catch { clientId = crypto.randomUUID(); }
+  let clientId = ls.get('wb-client');
+  if (!clientId) { clientId = crypto.randomUUID(); ls.set('wb-client', clientId); }
 
-  // ---- Local state ----
-  let strokes = [];            // authoritative-ish copy: [{id,userId,color,width,points:[[x,y]]}]
+  let strokes = [];
   const byId = new Map();
-  let color = COLORS[0], size = 4, erasing = false;
+  let color = COLORS.includes(WB.get('penColor')) ? WB.get('penColor') : COLORS[0];
+  let size = WB.get('penSize') || 4;
+  let erasing = false;
+  let lastPos = [W / 2, H / 2];
 
-  // ---- Rendering ----
+  // ---------- rendering (transparent canvas, so the eraser really erases and the grid shows through) ----------
   function style(s) {
+    ctx.globalCompositeOperation = s.erase ? 'destination-out' : 'source-over';
     ctx.strokeStyle = s.color; ctx.fillStyle = s.color;
     ctx.lineWidth = s.width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   }
   function drawFrom(s, start) {
     style(s);
     const p = s.points;
-    if (p.length === 1) {
-      ctx.beginPath(); ctx.arc(p[0][0], p[0][1], s.width / 2, 0, Math.PI * 2); ctx.fill();
-      return;
-    }
+    if (p.length === 1) { ctx.beginPath(); ctx.arc(p[0][0], p[0][1], s.width / 2, 0, Math.PI * 2); ctx.fill(); return; }
     ctx.beginPath();
     const i0 = Math.max(start - 1, 0);
     ctx.moveTo(p[i0][0], p[i0][1]);
@@ -112,139 +156,193 @@
     ctx.stroke();
   }
   function redraw() {
-    ctx.fillStyle = BOARD; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
     for (const s of strokes) if (s.points.length) drawFrom(s, 0);
   }
-  function setStrokes(list) {
-    strokes = list; byId.clear();
-    for (const s of strokes) byId.set(s.id, s);
-    redraw();
+  function setStrokes(list) { strokes = list; byId.clear(); for (const s of strokes) byId.set(s.id, s); redraw(); }
+
+  // ---------- helpers ----------
+  function toast(t) {
+    const el = $('toast'); el.textContent = t; el.classList.add('show');
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+  function showBlock(title, text) {
+    document.body.insertAdjacentHTML('beforeend',
+      '<div class="block"><div><h2></h2><p></p><a href="/">Back to home</a></div></div>');
+    const box = document.querySelector('.block:last-of-type');
+    box.querySelector('h2').textContent = title; box.querySelector('p').textContent = text;
   }
 
-  // ---- Socket ----
+  // ---------- socket ----------
   const socket = io();
-  const dot = document.getElementById('dot');
-  const people = document.getElementById('people');
+  let password = ss.get('wb-pw-' + roomId) || '';
+  const ownerKey = ls.get('wb-owner-' + roomId) || '';
+  const join = () => socket.emit('join', { room: roomId, clientId, password, ownerKey });
 
-  socket.on('connect', () => {
-    dot.classList.add('on');
-    socket.emit('join', { room: roomId, clientId });
+  socket.on('connect', () => { $('dot').classList.add('on'); join(); });
+  socket.on('disconnect', () => { $('dot').classList.remove('on'); $('people').textContent = 'reconnecting'; });
+  socket.on('join:denied', ({ reason }) => {
+    if (reason === 'full') { socket.disconnect(); return showBlock('This room is full', 'It has reached its capacity. Try again later.'); }
+    $('pwErr').textContent = reason === 'wrong-password' ? 'Wrong password. Try again.' : '';
+    $('pwInput').value = '';
+    if (!$('pwDlg').open) $('pwDlg').showModal();
+    $('pwInput').focus();
   });
-  socket.on('disconnect', () => { dot.classList.remove('on'); people.textContent = 'reconnecting'; });
+  $('pwDlg').addEventListener('cancel', (e) => e.preventDefault());
+  $('pwForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    password = $('pwInput').value; ss.set('wb-pw-' + roomId, password);
+    $('pwDlg').close(); join();
+  });
 
-  socket.on('init', ({ strokes: serverStrokes }) => {
+  socket.on('init', ({ strokes: serverStrokes, messages, name: roomName }) => {
+    if (roomName) { $('roomname').textContent = roomName; document.title = roomName + ' - Whiteboard'; }
     // Re-send anything I drew that the server never received (offline or dropped connection).
     const known = new Set(serverStrokes.map((s) => s.id));
     const mine = strokes.filter((s) => s.userId === clientId && !known.has(s.id));
     setStrokes([...serverStrokes, ...mine]);
     for (const s of mine) socket.emit('stroke:start', s);
+    $('msgs').textContent = '';
+    messages.forEach((m) => addMsg(m, true));
   });
-  socket.on('presence', (n) => { people.textContent = n === 1 ? 'just you' : n + ' people here'; });
+  socket.on('presence', ({ count, capacity }) => { $('people').textContent = count + ' of ' + capacity + ' here'; });
   socket.on('stroke:start', (s) => { strokes.push(s); byId.set(s.id, s); drawFrom(s, 0); });
   socket.on('stroke:points', ({ id, points }) => {
     const s = byId.get(id); if (!s) return;
-    const start = s.points.length;
-    s.points.push(...points);
-    drawFrom(s, start);
+    const start = s.points.length; s.points.push(...points); drawFrom(s, start);
   });
-  socket.on('stroke:remove', (id) => {
-    strokes = strokes.filter((s) => s.id !== id); byId.delete(id); redraw();
-  });
+  socket.on('stroke:remove', (id) => { strokes = strokes.filter((s) => s.id !== id); byId.delete(id); redraw(); });
   socket.on('clear', () => setStrokes([]));
+  socket.on('notice', toast);
+  socket.on('room:gone', () => { socket.disconnect(); showBlock('This room is gone', 'It has expired or was deleted.'); });
 
-  // ---- Remote cursors ----
-  const cursorLayer = document.getElementById('cursors');
+  // ---------- live cursors ----------
+  const cursorLayer = $('cursors');
   const cursors = new Map();
-  socket.on('cursor', ({ id, x, y, color: c }) => {
+  function makeCursor() {
+    const el = document.createElement('div');
+    el.className = 'cursor';
+    el.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 2l6.8 16 2.4-6.8L18 8.8z" fill="currentColor" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="tag"></span>';
+    return el;
+  }
+  socket.on('cursor', ({ id, x, y, color: c, name }) => {
     let el = cursors.get(id);
-    if (!el) {
-      el = document.createElement('div'); el.className = 'cursor';
-      cursorLayer.appendChild(el); cursors.set(id, el);
-    }
-    el.style.background = c;
+    if (!el) { el = makeCursor(); cursorLayer.appendChild(el); cursors.set(id, el); }
+    el.style.setProperty('--c', c);
+    el.querySelector('.tag').textContent = name || 'Guest';   // textContent: names are untrusted
     el.style.left = (x / W * 100) + '%';
     el.style.top = (y / H * 100) + '%';
+    el.dataset.t = Date.now();
   });
-  socket.on('cursor:gone', (id) => { cursors.get(id)?.remove(); cursors.delete(id); });
+  socket.on('cursor:gone', (id) => { const el = cursors.get(id); if (el) el.remove(); cursors.delete(id); });
+  setInterval(() => {                                          // drop cursors that went quiet
+    for (const [id, el] of cursors) if (Date.now() - +el.dataset.t > 20000) { el.remove(); cursors.delete(id); }
+  }, 5000);
 
-  // ---- Drawing input ----
+  // ---------- drawing input ----------
   let current = null, pending = [], flushTimer = null, lastCursor = 0;
-
-  function pos(e) {
+  const pos = (e) => {
     const r = canvas.getBoundingClientRect();
     return [Math.round((e.clientX - r.left) / r.width * W), Math.round((e.clientY - r.top) / r.height * H)];
+  };
+  function sendCursor(p) {
+    lastPos = p;
+    socket.emit('cursor', { x: p[0], y: p[1], color: erasing ? '#9aa5b1' : color, name: WB.name() });
   }
   function flush() {
     flushTimer = null;
-    if (current && pending.length) {
-      socket.emit('stroke:points', { id: current.id, points: pending });
-      pending = [];
-    }
+    if (current && pending.length) { socket.emit('stroke:points', { id: current.id, points: pending }); pending = []; }
   }
-
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
-    current = {
-      id: crypto.randomUUID(), userId: clientId,
-      color: erasing ? BOARD : color, width: erasing ? size * 4 : size,
-      points: [pos(e)],
-    };
+    current = { id: crypto.randomUUID(), userId: clientId, color: erasing ? '#000000' : color,
+                width: erasing ? size * 4 : size, erase: erasing, points: [pos(e)] };
     strokes.push(current); byId.set(current.id, current);
     socket.emit('stroke:start', current);
     drawFrom(current, 0);
   });
-
   canvas.addEventListener('pointermove', (e) => {
-    const p = pos(e);
-    const now = performance.now();
-    if (now - lastCursor > 40) {
-      lastCursor = now;
-      socket.emit('cursor', { x: p[0], y: p[1], color: erasing ? '#9aa5b1' : color });
-    }
+    const p = pos(e), now = performance.now();
+    if (now - lastCursor > 40) { lastCursor = now; sendCursor(p); }
     if (!current) return;
     const start = current.points.length;
-    current.points.push(p);
-    drawFrom(current, start);
-    pending.push(p);
-    if (!flushTimer) flushTimer = setTimeout(flush, 40); // batch: ~25 messages/sec max
+    current.points.push(p); drawFrom(current, start); pending.push(p);
+    if (!flushTimer) flushTimer = setTimeout(flush, 40);       // batch: ~25 messages/sec max
   });
-
   const end = () => { if (!current) return; flush(); current = null; };
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
 
-  // ---- Toolbar ----
-  const swatchBox = document.getElementById('swatches');
-  COLORS.forEach((c, i) => {
+  // ---------- toolbar (pen color and size are remembered) ----------
+  const swatchBox = $('swatches');
+  COLORS.forEach((c) => {
     const b = document.createElement('button');
     b.className = 'swatch'; b.style.background = c; b.setAttribute('aria-label', 'Colour ' + c);
-    b.setAttribute('aria-pressed', i === 0);
+    b.setAttribute('aria-pressed', c === color);
     b.onclick = () => {
-      color = c; setErasing(false);
+      color = c; setErasing(false); WB.set('penColor', c);
       swatchBox.querySelectorAll('.swatch').forEach((x) => x.setAttribute('aria-pressed', x === b));
     };
     swatchBox.appendChild(b);
   });
-
-  const eraserBtn = document.getElementById('eraser');
+  $('size').value = size;
+  $('size').oninput = (e) => { size = +e.target.value; WB.set('penSize', size); };
+  const eraserBtn = $('eraser');
   function setErasing(v) { erasing = v; eraserBtn.setAttribute('aria-pressed', v); }
   eraserBtn.onclick = () => setErasing(!erasing);
-
-  document.getElementById('size').oninput = (e) => { size = +e.target.value; };
   const undo = () => socket.emit('undo');
-  document.getElementById('undo').onclick = undo;
-  document.getElementById('clear').onclick = () => {
-    if (confirm('Clear the board for everyone in this room?')) socket.emit('clear');
-  };
-  const copyBtn = document.getElementById('copy');
-  copyBtn.onclick = async () => {
-    try { await navigator.clipboard.writeText(location.href); copyBtn.textContent = 'Link copied'; }
-    catch { copyBtn.textContent = 'Copy failed'; }
-    setTimeout(() => (copyBtn.textContent = 'Copy link'), 1500);
+  $('undo').onclick = undo;
+  $('clear').onclick = () => { if (confirm('Clear the board for everyone in this room?')) socket.emit('clear'); };
+  $('copy').onclick = async () => {
+    const b = $('copy');
+    try { await navigator.clipboard.writeText(location.href); b.textContent = 'Link copied'; } catch { b.textContent = 'Copy failed'; }
+    setTimeout(() => (b.textContent = 'Copy link'), 1500);
   };
   addEventListener('keydown', (e) => {
+    if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
   });
+
+  // ---------- chat ----------
+  let unread = 0;
+  const chatOpen = () => document.body.classList.contains('chat-open');
+  function addMsg(m, quiet) {
+    const box = $('msgs');
+    const stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+    const d = document.createElement('div');
+    d.className = 'msg' + (m.from === clientId ? ' mine' : '');
+    const head = document.createElement('div');
+    const n = document.createElement('b'); n.textContent = m.name;
+    const t = document.createElement('time'); t.textContent = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    head.append(n, t);
+    const p = document.createElement('p'); p.textContent = m.text;
+    d.append(head, p); box.appendChild(d);
+    if (stick || m.from === clientId) box.scrollTop = box.scrollHeight;
+    if (!quiet && !chatOpen() && m.from !== clientId) { unread++; $('unread').textContent = unread; }
+  }
+  socket.on('chat', (m) => addMsg(m, false));
+  $('chatForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = $('chatInput').value.trim();
+    if (!text) return;
+    socket.emit('chat', { text, name: WB.name() });
+    $('chatInput').value = '';
+  });
+  $('chatClose').onclick = () => WB.set('chat', false);
+  $('chatToggle').onclick = () => WB.set('chat', true);
+
+  // ---------- settings from the sidebar ----------
+  function applySettings() {
+    canvas.classList.toggle('grid', !!WB.get('grid'));
+    cursorLayer.style.display = WB.get('cursors') ? '' : 'none';
+    cursorLayer.classList.toggle('no-names', !WB.get('cursorNames'));
+    const want = WB.get('chat') ?? innerWidth >= 1100;
+    document.body.classList.toggle('chat-open', !!want);
+    if (want) { unread = 0; $('unread').textContent = ''; }
+  }
+  WB.onChange(applySettings);
+  applySettings();
 })();
 </script>
 </body>

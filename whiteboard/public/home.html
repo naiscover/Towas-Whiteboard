@@ -5,95 +5,91 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Whiteboard rooms</title>
 <style>
-  :root { --bg:#d8dde2; --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; --line:#3a4756; }
+  :root { --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--tray);
+  body { margin: 0; min-height: 100vh; color: var(--tray);
          font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .namebox { position: fixed; top: 16px; left: 16px; z-index: 2; }
-  .namebox input { width: 190px; padding: 8px 12px; font: inherit; color: var(--tray);
-                   background: var(--board); border: 1px solid #b8c0c8; border-radius: 8px; }
-  .namebox input::placeholder { color: #7b8794; }
-  .sheet { width: min(760px, calc(100% - 32px)); margin: 88px auto 140px; padding: 28px;
-           background: rgba(253,253,252,.92); border-radius: 12px; box-shadow: 0 8px 24px rgba(29,39,51,.18); }
+  .sheet { width: min(820px, calc(100% - 32px)); margin: 40px auto 150px; padding: 28px 28px 32px;
+           background: rgba(253,253,252,.92); border-radius: 14px; box-shadow: 0 8px 24px rgba(29,39,51,.18); text-align: center; }
+  .banner { display: block; width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; margin: 0 0 22px; }
   h1 { margin: 0 0 6px; font-size: 32px; line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; }
   .sub { margin: 0 0 4px; }
-  .fine { margin: 0 0 22px; color: #5b6773; font-size: 13px; }
-  .notice { margin: 0 0 16px; padding: 8px 12px; border-radius: 8px; background: #fff3d6; color: #6b4a00; }
-  .tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-  .tab { display: block; text-decoration: none; color: var(--tray); background: #fff; min-width: 0;
+  .fine { margin: 0; color: #5b6773; font-size: 13px; }
+  .notice { margin: 16px 0 0; padding: 8px 12px; border-radius: 8px; background: #fff3d6; color: #6b4a00; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; text-align: left; }
+  .tab { flex: 0 1 230px; display: block; min-width: 0; text-decoration: none; color: var(--tray); background: #fff;
          border: 1px solid #cfd6dd; border-top: 4px solid var(--c); border-radius: 10px 10px 4px 4px; padding: 12px 14px; }
   .tab:hover { background: #f1f4f7; }
-  .tab:focus-visible, .create :focus-visible, .namebox :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  .tab:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
   .tab strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tab span { display: block; font-size: 13px; color: #5b6773; }
-  .empty { color: #5b6773; }
-  .create { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2;
-            display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;
-            background: var(--tray); color: var(--ink); padding: 10px 14px; border-radius: 14px;
-            width: min(560px, calc(100% - 24px)); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
-  .create input { flex: 1 1 200px; min-width: 0; padding: 8px 12px; font: inherit; color: var(--tray);
-                  background: var(--board); border: 0; border-radius: 8px; }
-  .create button { padding: 8px 14px; font: inherit; color: var(--tray); background: var(--ink);
-                   border: 0; border-radius: 8px; cursor: pointer; }
-  .create button:disabled { opacity: .6; cursor: default; }
-  .err { flex-basis: 100%; margin: 0; color: #ffb4ae; font-size: 13px; }
-  .err:empty { display: none; }
+  .empty { margin-top: 24px; color: #5b6773; }
+  .plus { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2; width: 60px; height: 60px;
+          border: 0; border-radius: 50%; background: var(--tray); color: #fff; cursor: pointer; display: grid; place-items: center;
+          box-shadow: 0 6px 20px rgba(0,0,0,.3); transition: box-shadow .2s ease, transform .2s ease; }
+  .plus:hover, .plus:focus-visible { transform: translateX(-50%) scale(1.08);
+          box-shadow: 0 0 0 4px rgba(124,178,255,.35), 0 0 26px 8px rgba(124,178,255,.75); outline: none; }
+  @media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
 </style>
 </head>
-<body>
-  <div class="namebox">
-    <input id="name" type="text" maxlength="20" placeholder="Enter your name" autocomplete="off" aria-label="Your name (optional)">
-  </div>
-
+<body data-page="home">
   <main class="sheet">
+    <img class="banner" src="/images/home-banner.png" alt="" onerror="this.remove()">
     <h1 id="welcome">Welcome</h1>
-    <p class="sub">Pick a room to draw in, or create a new one below.</p>
-    <p class="fine">Rooms are deleted automatically 30 days after they are created.</p>
+    <p class="sub">Pick a room to draw in, or press the plus button to create one.</p>
+    <p class="fine">Rooms are deleted automatically when their timer runs out (30 days at most).</p>
     <p class="notice" id="notice" hidden>That room no longer exists. It may have expired.</p>
     <div class="tabs" id="tabs" role="list"></div>
-    <p class="empty" id="empty" hidden>No rooms yet. Create the first one below.</p>
+    <p class="empty" id="empty" hidden>No rooms yet. Press the plus button to create the first one.</p>
   </main>
 
-  <form class="create" id="create">
-    <input id="roomname" type="text" maxlength="40" placeholder="Room name (optional)" autocomplete="off" aria-label="New room name">
-    <button type="submit" id="go">Create room</button>
-    <p class="err" id="err" role="alert"></p>
-  </form>
+  <button class="plus" id="plus" type="button" aria-label="Create a room" title="Create a room">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
 
-<script src="/bg.js"></script>
+  <dialog class="wb-dialog" id="createDlg">
+    <form id="createForm">
+      <h2>Create a room</h2>
+      <label class="wb-field">Room name<input id="cName" type="text" maxlength="40" placeholder="Untitled room" autocomplete="off"></label>
+      <label class="wb-field">Capacity (people)<input id="cCap" type="number" min="2" max="100" value="20" required></label>
+      <label class="wb-field">Deletes after
+        <select id="cExpiry"><option value="1">1 day</option><option value="7">7 days</option><option value="30" selected>30 days</option></select>
+      </label>
+      <label class="wb-check"><input type="checkbox" id="cPriv"> Private: ask for a password to join</label>
+      <label class="wb-field" id="cPwWrap" hidden>Password<input id="cPw" type="password" minlength="4" maxlength="64" autocomplete="new-password" placeholder="At least 4 characters"></label>
+      <label class="wb-check"><input type="checkbox" id="cListed" checked> Show this room on the home page</label>
+      <label class="wb-check"><input type="checkbox" id="cOwner"> Only I can clear the board</label>
+      <p class="wb-err" id="cErr" role="alert"></p>
+      <div class="wb-actions">
+        <button type="button" class="wb-btn" id="cCancel">Cancel</button>
+        <button type="submit" class="wb-btn primary" id="cGo">Create room</button>
+      </div>
+    </form>
+  </dialog>
+
+<script src="/sidebar.js"></script>
 <script>
 (() => {
   const COLORS = ['#1d2733', '#e5484d', '#f5a524', '#2f9e6f', '#2f6fed', '#8b5cf6'];
   const $ = (id) => document.getElementById(id);
 
-  // Welcome + name (shared with the board page)
-  let myName = '';
-  try { myName = localStorage.getItem('wb-name') || ''; } catch {}
-  const renderWelcome = () => { $('welcome').textContent = myName ? 'Welcome, ' + myName : 'Welcome'; };
-  $('name').value = myName; renderWelcome();
-  $('name').addEventListener('input', (e) => {
-    myName = e.target.value.trim().slice(0, 20);
-    try { localStorage.setItem('wb-name', myName); } catch {}
-    renderWelcome();
-  });
-
+  const renderWelcome = () => { const n = WB.name(); $('welcome').textContent = n ? 'Welcome, ' + n : 'Welcome'; };
+  renderWelcome();
+  WB.onChange((k) => { if (k === 'name') renderWelcome(); });
   if (new URLSearchParams(location.search).get('missing')) $('notice').hidden = false;
 
-  // Room tabs
+  // ---- Room tabs ----
   const colorFor = (id) => { let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
   function timeLeft(ts) {
-    const ms = ts - Date.now();
-    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5);
+    const ms = ts - Date.now(), d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5);
     if (d >= 1) return 'Deletes in ' + plural(d, 'day');
     if (h >= 1) return 'Deletes in ' + plural(h, 'hour');
     return 'Deletes within the hour';
   }
-  const peopleText = (n) => (n === 0 ? 'Empty' : n === 1 ? '1 person here' : n + ' people here');
-
   let lastSig = '';
   function render(rooms) {
-    const sig = JSON.stringify(rooms.map((r) => [r.id, r.name, r.people, timeLeft(r.expiresAt)]));
+    const sig = JSON.stringify(rooms.map((r) => [r.id, r.name, r.people, r.capacity, r.private, timeLeft(r.expiresAt)]));
     if (sig === lastSig) return;
     lastSig = sig;
     const tabs = $('tabs');
@@ -103,10 +99,13 @@
       const a = document.createElement('a');
       a.className = 'tab'; a.href = '/b/' + r.id; a.setAttribute('role', 'listitem');
       a.style.setProperty('--c', colorFor(r.id));
-      const t = document.createElement('strong'); t.textContent = r.name;       // textContent: names are untrusted
-      const p = document.createElement('span'); p.textContent = peopleText(r.people);
-      const e = document.createElement('span'); e.textContent = timeLeft(r.expiresAt);
-      a.append(t, p, e);
+      const lines = [r.name, r.people + ' of ' + r.capacity + ' here', timeLeft(r.expiresAt)];
+      if (r.private) lines.splice(2, 0, 'Password required');
+      lines.forEach((text, i) => {
+        const el = document.createElement(i === 0 ? 'strong' : 'span');
+        el.textContent = text;                       // textContent: names are untrusted
+        a.appendChild(el);
+      });
       tabs.appendChild(a);
     }
   }
@@ -116,20 +115,34 @@
   }
   load(); setInterval(load, 5000);
 
-  // Create room
-  $('create').addEventListener('submit', async (e) => {
+  // ---- Create room popup ----
+  const dlg = $('createDlg');
+  $('plus').addEventListener('click', () => { $('cErr').textContent = ''; dlg.showModal(); $('cName').focus(); });
+  $('cCancel').addEventListener('click', () => dlg.close());
+  $('cPriv').addEventListener('change', (e) => {
+    $('cPwWrap').hidden = !e.target.checked;
+    $('cPw').required = e.target.checked;
+    if (e.target.checked) $('cPw').focus();
+  });
+  $('createForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    $('go').disabled = true; $('err').textContent = '';
+    $('cGo').disabled = true; $('cErr').textContent = '';
+    const body = {
+      name: $('cName').value.trim(), capacity: +$('cCap').value, expiryDays: +$('cExpiry').value,
+      private: $('cPriv').checked, password: $('cPw').value,
+      listed: $('cListed').checked, ownerOnlyClear: $('cOwner').checked,
+    };
     try {
-      const res = await fetch('/api/rooms', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: $('roomname').value.trim() }),
-      });
+      const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not create the room.');
+      try {
+        localStorage.setItem('wb-owner-' + data.id, data.ownerKey);                 // proves you created it
+        if (body.private) sessionStorage.setItem('wb-pw-' + data.id, body.password); // skip the password prompt for you
+      } catch {}
       location.href = '/b/' + data.id;
     } catch (ex) {
-      $('err').textContent = ex.message; $('go').disabled = false;
+      $('cErr').textContent = ex.message; $('cGo').disabled = false;
     }
   });
 })();

@@ -34,27 +34,6 @@ Built with **Node.js, Express, Socket.IO and the HTML Canvas**. There is no fron
   sliders, grid, cursor visibility, cursor names, chat visibility, and reset.
 - Pen color and size are remembered.
 
-## Getting started
-
-    npm install
-    npm start          # http://localhost:3000
-
-Open the same room link in two different browsers, or in one normal and one private window, to see it sync.
-Requires Node 18 or newer.
-
-## Images
-
-Put your own images in `public/images/`, keeping these file names:
-
-| File | Used for |
-|---|---|
-| `default-bg.jpg` | Default blurred background |
-| `home-banner.gif` | Banner above the welcome message (any image type works, update the `<img>` in `home.html`) |
-| `favicon.png` | Browser tab icon (square, 256x256 or larger) |
-| `apple-touch-icon.png` | Icon for iPhone and iPad home screens (180x180) |
-
-File names are case sensitive on the server, so use lowercase exactly as shown.
-
 ## Project structure
 
     server.js              Express server, REST API, Socket.IO events, room storage and cleanup
@@ -85,13 +64,3 @@ File names are case sensitive on the server, so use lowercase exactly as shown.
 - Capacity, ownership and "only the creator can clear" are enforced server-side.
 - All client input is validated and length-limited. Names, room names and chat are inserted as text, never as HTML.
 - Unlisted rooms are only reachable by link. Anyone with the link to a public room can join it.
-
-## Deploying
-
-Works on Render, Railway or Fly.io: build command `npm install`, start command `npm start`. If your repo has the project in
-a subfolder, set the service's Root Directory to that folder. On free tiers the disk is wiped on restarts and redeploys,
-so boards and rooms do not survive. Use a database (Postgres or Redis) if you need them to.
-
-## Roadmap ideas
-
-Database storage, accounts, a text tool, zoom and pan, multi-instance scaling with the Socket.IO Redis adapter, and tests.

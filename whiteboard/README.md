@@ -26,17 +26,3 @@ Open the room URL in two windows to see it sync.
 
 Render, Railway or Fly.io all work: build command `npm install`, start command `npm start`.
 Note: free tiers often have an ephemeral disk, so use a managed DB if you want boards to survive redeploys.
-
-## Next steps (these make it resume-worthy)
-
-1. **Load test** with k6 or Artillery and record concurrent users per room and p95 sync latency.
-2. **Redis adapter** (`@socket.io/redis-adapter`) to run multiple server instances.
-3. **Redo**, plus an object eraser that removes whole strokes instead of painting white.
-4. **Auth and saved boards** per account.
-5. **Replace the stroke list with a CRDT (Yjs)** for offline-first merging, then write up the trade-offs.
-6. Tests for the server handlers and a CI workflow.
-
-## Resume bullet (fill in your own numbers once you measure them)
-
-> Built a real-time collaborative whiteboard (Node.js, Socket.IO, Canvas) with shared rooms, per-user undo,
-> reconnect-safe sync and persistence; load-tested to XX concurrent users per room at <XX ms p95 latency.

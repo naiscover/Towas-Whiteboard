@@ -32,12 +32,13 @@
     html { background: #d8dde2; }
     body { background: transparent !important; }
     .wb-bg { position: fixed; inset: -60px; z-index: -1; background-size: cover; background-position: center; }
-    .wb-side { position: fixed; top: 0; right: 0; bottom: 0; width: 272px; z-index: 4; padding: 20px 18px; overflow-y: auto;
+    .wb-side { position: fixed; top: 0; right: 0; bottom: 0; width: 272px; z-index: 4;
       background: #1d2733; color: #e8edf2; transform: translateX(100%); transition: transform .22s ease;
       box-shadow: -8px 0 24px rgba(0,0,0,.25); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
     .wb-side:hover, .wb-side:focus-within, .wb-side.open { transform: none; }
     .wb-handle { position: absolute; left: -30px; top: 50%; transform: translateY(-50%); width: 30px; height: 96px; border: 0;
       border-radius: 10px 0 0 10px; background: #1d2733; color: #e8edf2; cursor: pointer; display: grid; place-items: center; }
+    .wb-scroll { height: 100%; overflow-y: auto; padding: 20px 18px; }
     .wb-side h2 { margin: 0 0 12px; font-size: 18px; }
     .wb-side h3 { margin: 18px 0 8px; font-size: 14px; color: #9fb0c3; font-weight: 600; }
     .wb-side label { display: block; margin: 8px 0; }
@@ -108,6 +109,7 @@
     <button class="wb-handle" type="button" aria-label="Toggle settings">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
+    <div class="wb-scroll">
     <h2>Settings</h2>
     <h3>You</h3>
     <label>Display name<input type="text" id="wb-name" maxlength="20" autocomplete="off"></label>
@@ -127,7 +129,8 @@
     </div>
     <h3>Reset</h3>
     <button type="button" class="wb-small" id="wb-reset">Reset settings</button>
-    <p class="wb-note">Everything here is saved in this browser only. Your background image never leaves your device.</p>`;
+    <p class="wb-note">Everything here is saved in this browser only. Your background image never leaves your device.</p>
+    </div>`;
   const fileInput = document.createElement('input');
   fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.hidden = true;
   document.body.append(side, fileInput);

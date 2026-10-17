@@ -1,0 +1,63 @@
+// Blurred custom background. The image is resized and kept in this browser only (localStorage).
+(() => {
+  const KEY = 'wb-bg';
+  const style = document.createElement('style');
+  style.textContent = `
+    .wb-bg { position: fixed; inset: -40px; z-index: -1; background-size: cover; background-position: center;
+             filter: blur(18px) saturate(1.05); display: none; }
+    .wb-bgtools { position: fixed; top: 16px; right: 16px; z-index: 2; display: flex; gap: 6px; }
+    .wb-bgtools button { font: inherit; color: #e8edf2; background: #1d2733; border: 1px solid #3a4756;
+                         border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+    .wb-bgtools button:hover { background: #2a3644; }
+    .wb-bgtools button:focus-visible { outline: 2px solid #7cb2ff; outline-offset: 2px; }`;
+  document.head.appendChild(style);
+
+  const layer = document.createElement('div');
+  layer.className = 'wb-bg';
+  const tools = document.createElement('div');
+  tools.className = 'wb-bgtools';
+  tools.innerHTML = '<button type="button" id="wb-pick">Background</button>' +
+    '<button type="button" id="wb-clear" aria-label="Remove background" title="Remove background" hidden>&times;</button>';
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
+  document.body.append(layer, tools, input);
+  const clearBtn = tools.querySelector('#wb-clear');
+
+  const load = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+  function apply(data) {
+    layer.style.backgroundImage = data ? 'url("' + data + '")' : '';
+    layer.style.display = data ? 'block' : 'none';
+    clearBtn.hidden = !data;
+  }
+
+  function toDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, 1200 / Math.max(img.width, img.height)); // it is blurred, so small is fine
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+      img.src = url;
+    });
+  }
+
+  tools.querySelector('#wb-pick').onclick = () => input.click();
+  input.onchange = async () => {
+    const file = input.files[0]; input.value = '';
+    if (!file) return;
+    try {
+      const data = await toDataUrl(file);
+      apply(data);
+      try { localStorage.setItem(KEY, data); } catch { alert('The background is applied, but could not be saved for next time.'); }
+    } catch { alert('That file could not be read as an image.'); }
+  };
+  clearBtn.onclick = () => { try { localStorage.removeItem(KEY); } catch {} apply(null); };
+  addEventListener('storage', (e) => { if (e.key === KEY) apply(load()); });
+  apply(load());
+})();

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whiteboard rooms</title>
+<style>
+  :root { --bg:#d8dde2; --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; --line:#3a4756; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--tray);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .namebox { position: fixed; top: 16px; left: 16px; z-index: 2; }
+  .namebox input { width: 190px; padding: 8px 12px; font: inherit; color: var(--tray);
+                   background: var(--board); border: 1px solid #b8c0c8; border-radius: 8px; }
+  .namebox input::placeholder { color: #7b8794; }
+  .sheet { width: min(760px, calc(100% - 32px)); margin: 88px auto 140px; padding: 28px;
+           background: rgba(253,253,252,.92); border-radius: 12px; box-shadow: 0 8px 24px rgba(29,39,51,.18); }
+  h1 { margin: 0 0 6px; font-size: 32px; line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; }
+  .sub { margin: 0 0 4px; }
+  .fine { margin: 0 0 22px; color: #5b6773; font-size: 13px; }
+  .notice { margin: 0 0 16px; padding: 8px 12px; border-radius: 8px; background: #fff3d6; color: #6b4a00; }
+  .tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .tab { display: block; text-decoration: none; color: var(--tray); background: #fff; min-width: 0;
+         border: 1px solid #cfd6dd; border-top: 4px solid var(--c); border-radius: 10px 10px 4px 4px; padding: 12px 14px; }
+  .tab:hover { background: #f1f4f7; }
+  .tab:focus-visible, .create :focus-visible, .namebox :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  .tab strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab span { display: block; font-size: 13px; color: #5b6773; }
+  .empty { color: #5b6773; }
+  .create { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2;
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;
+            background: var(--tray); color: var(--ink); padding: 10px 14px; border-radius: 14px;
+            width: min(560px, calc(100% - 24px)); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .create input { flex: 1 1 200px; min-width: 0; padding: 8px 12px; font: inherit; color: var(--tray);
+                  background: var(--board); border: 0; border-radius: 8px; }
+  .create button { padding: 8px 14px; font: inherit; color: var(--tray); background: var(--ink);
+                   border: 0; border-radius: 8px; cursor: pointer; }
+  .create button:disabled { opacity: .6; cursor: default; }
+  .err { flex-basis: 100%; margin: 0; color: #ffb4ae; font-size: 13px; }
+  .err:empty { display: none; }
+</style>
+</head>
+<body>
+  <div class="namebox">
+    <input id="name" type="text" maxlength="20" placeholder="Enter your name" autocomplete="off" aria-label="Your name (optional)">
+  </div>
+
+  <main class="sheet">
+    <h1 id="welcome">Welcome</h1>
+    <p class="sub">Pick a room to draw in, or create a new one below.</p>
+    <p class="fine">Rooms are deleted automatically 30 days after they are created.</p>
+    <p class="notice" id="notice" hidden>That room no longer exists. It may have expired.</p>
+    <div class="tabs" id="tabs" role="list"></div>
+    <p class="empty" id="empty" hidden>No rooms yet. Create the first one below.</p>
+  </main>
+
+  <form class="create" id="create">
+    <input id="roomname" type="text" maxlength="40" placeholder="Room name (optional)" autocomplete="off" aria-label="New room name">
+    <button type="submit" id="go">Create room</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+<script src="/bg.js"></script>
+<script>
+(() => {
+  const COLORS = ['#1d2733', '#e5484d', '#f5a524', '#2f9e6f', '#2f6fed', '#8b5cf6'];
+  const $ = (id) => document.getElementById(id);
+
+  // Welcome + name (shared with the board page)
+  let myName = '';
+  try { myName = localStorage.getItem('wb-name') || ''; } catch {}
+  const renderWelcome = () => { $('welcome').textContent = myName ? 'Welcome, ' + myName : 'Welcome'; };
+  $('name').value = myName; renderWelcome();
+  $('name').addEventListener('input', (e) => {
+    myName = e.target.value.trim().slice(0, 20);
+    try { localStorage.setItem('wb-name', myName); } catch {}
+    renderWelcome();
+  });
+
+  if (new URLSearchParams(location.search).get('missing')) $('notice').hidden = false;
+
+  // Room tabs
+  const colorFor = (id) => { let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  function timeLeft(ts) {
+    const ms = ts - Date.now();
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5);
+    if (d >= 1) return 'Deletes in ' + plural(d, 'day');
+    if (h >= 1) return 'Deletes in ' + plural(h, 'hour');
+    return 'Deletes within the hour';
+  }
+  const peopleText = (n) => (n === 0 ? 'Empty' : n === 1 ? '1 person here' : n + ' people here');
+
+  let lastSig = '';
+  function render(rooms) {
+    const sig = JSON.stringify(rooms.map((r) => [r.id, r.name, r.people, timeLeft(r.expiresAt)]));
+    if (sig === lastSig) return;
+    lastSig = sig;
+    const tabs = $('tabs');
+    tabs.textContent = '';
+    $('empty').hidden = rooms.length > 0;
+    for (const r of rooms) {
+      const a = document.createElement('a');
+      a.className = 'tab'; a.href = '/b/' + r.id; a.setAttribute('role', 'listitem');
+      a.style.setProperty('--c', colorFor(r.id));
+      const t = document.createElement('strong'); t.textContent = r.name;       // textContent: names are untrusted
+      const p = document.createElement('span'); p.textContent = peopleText(r.people);
+      const e = document.createElement('span'); e.textContent = timeLeft(r.expiresAt);
+      a.append(t, p, e);
+      tabs.appendChild(a);
+    }
+  }
+  async function load() {
+    if (document.hidden) return;
+    try { render(await (await fetch('/api/rooms', { cache: 'no-store' })).json()); } catch {}
+  }
+  load(); setInterval(load, 5000);
+
+  // Create room
+  $('create').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('go').disabled = true; $('err').textContent = '';
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: $('roomname').value.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not create the room.');
+      location.href = '/b/' + data.id;
+    } catch (ex) {
+      $('err').textContent = ex.message; $('go').disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

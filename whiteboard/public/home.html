@@ -3,30 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Whiteboard rooms</title>
+<title>Towa’s Whiteboards</title>
+<link rel="icon" type="image/png" href="/images/favicon.png">
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<script>try{document.documentElement.dataset.theme=JSON.parse(localStorage.getItem('wb-settings')).theme||'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+<link rel="stylesheet" href="/theme.css">
 <style>
-  :root { --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; color: var(--tray);
-         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .sheet { width: min(820px, calc(100% - 32px)); margin: 40px auto 150px; padding: 28px 28px 32px;
-           background: rgba(253,253,252,.92); border-radius: 14px; box-shadow: 0 8px 24px rgba(29,39,51,.18); text-align: center; }
-  .banner { display: block; width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; margin: 0 0 22px; }
+  body { margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .sheet { width: min(860px, calc(100% - 32px)); margin: 40px auto 150px; padding: 28px 28px 32px; background: var(--surface);
+           border-radius: 14px; box-shadow: var(--shadow); text-align: center; }
+  .banner { display: block; margin: 0 auto 22px; width: auto; height: auto; max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 10px; }
   h1 { margin: 0 0 6px; font-size: 32px; line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; }
   .sub { margin: 0 0 4px; }
-  .fine { margin: 0; color: #5b6773; font-size: 13px; }
-  .notice { margin: 16px 0 0; padding: 8px 12px; border-radius: 8px; background: #fff3d6; color: #6b4a00; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; text-align: left; }
-  .tab { flex: 0 1 230px; display: block; min-width: 0; text-decoration: none; color: var(--tray); background: #fff;
-         border: 1px solid #cfd6dd; border-top: 4px solid var(--c); border-radius: 10px 10px 4px 4px; padding: 12px 14px; }
-  .tab:hover { background: #f1f4f7; }
-  .tab:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  .fine { margin: 0; color: var(--muted); font-size: 13px; }
+  .notice { margin: 16px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--notice-bg); color: var(--notice-text); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 24px; text-align: left; }
+  .tab { flex: 0 1 250px; display: block; min-width: 0; text-decoration: none; color: var(--text); background: var(--card);
+         border: 1px solid var(--border); border-top: 4px solid var(--c); border-radius: 10px 10px 4px 4px; padding: 10px; }
+  .tab:hover { background: var(--card-hover); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .thumb { display: block; width: 100%; aspect-ratio: 8 / 5; object-fit: cover; background: #fff; border-radius: 6px; margin-bottom: 8px; }
   .tab strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tab span { display: block; font-size: 13px; color: #5b6773; }
-  .empty { margin-top: 24px; color: #5b6773; }
-  .plus { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2; width: 60px; height: 60px;
-          border: 0; border-radius: 50%; background: var(--tray); color: #fff; cursor: pointer; display: grid; place-items: center;
-          box-shadow: 0 6px 20px rgba(0,0,0,.3); transition: box-shadow .2s ease, transform .2s ease; }
+  .tab span { display: block; font-size: 13px; color: var(--muted); }
+  .empty { margin-top: 24px; color: var(--muted); }
+  .plus { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2; width: 60px; height: 60px; border: 0;
+          border-radius: 50%; background: var(--primary); color: var(--primary-text); cursor: pointer; display: grid; place-items: center;
+          box-shadow: 0 6px 20px rgba(0,0,0,.35); transition: box-shadow .2s ease, transform .2s ease; }
   .plus:hover, .plus:focus-visible { transform: translateX(-50%) scale(1.08);
           box-shadow: 0 0 0 4px rgba(124,178,255,.35), 0 0 26px 8px rgba(124,178,255,.75); outline: none; }
   @media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
@@ -58,6 +61,7 @@
       <label class="wb-check"><input type="checkbox" id="cPriv"> Private: ask for a password to join</label>
       <label class="wb-field" id="cPwWrap" hidden>Password<input id="cPw" type="password" minlength="4" maxlength="64" autocomplete="new-password" placeholder="At least 4 characters"></label>
       <label class="wb-check"><input type="checkbox" id="cListed" checked> Show this room on the home page</label>
+      <label class="wb-check"><input type="checkbox" id="cBlur"> Blur the home page preview (private rooms are always blurred)</label>
       <label class="wb-check"><input type="checkbox" id="cOwner"> Only I can clear the board</label>
       <p class="wb-err" id="cErr" role="alert"></p>
       <div class="wb-actions">
@@ -78,7 +82,7 @@
   WB.onChange((k) => { if (k === 'name') renderWelcome(); });
   if (new URLSearchParams(location.search).get('missing')) $('notice').hidden = false;
 
-  // ---- Room tabs ----
+  // ---- Room tabs with live previews ----
   const colorFor = (id) => { let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
   function timeLeft(ts) {
@@ -89,7 +93,7 @@
   }
   let lastSig = '';
   function render(rooms) {
-    const sig = JSON.stringify(rooms.map((r) => [r.id, r.name, r.people, r.capacity, r.private, timeLeft(r.expiresAt)]));
+    const sig = JSON.stringify(rooms.map((r) => [r.id, r.name, r.people, r.capacity, r.private, r.updatedAt, timeLeft(r.expiresAt)]));
     if (sig === lastSig) return;
     lastSig = sig;
     const tabs = $('tabs');
@@ -99,6 +103,10 @@
       const a = document.createElement('a');
       a.className = 'tab'; a.href = '/b/' + r.id; a.setAttribute('role', 'listitem');
       a.style.setProperty('--c', colorFor(r.id));
+      const img = document.createElement('img');
+      img.className = 'thumb'; img.alt = ''; img.loading = 'lazy';
+      img.src = '/api/rooms/' + r.id + '/preview.svg?v=' + r.updatedAt;   // the version changes when the board does
+      a.appendChild(img);
       const lines = [r.name, r.people + ' of ' + r.capacity + ' here', timeLeft(r.expiresAt)];
       if (r.private) lines.splice(2, 0, 'Password required');
       lines.forEach((text, i) => {
@@ -117,7 +125,7 @@
 
   // ---- Create room popup ----
   const dlg = $('createDlg');
-  $('plus').addEventListener('click', () => { $('cErr').textContent = ''; dlg.showModal(); $('cName').focus(); });
+  $('plus').addEventListener('click', () => { $('cErr').textContent = ''; $('cGo').disabled = false; dlg.showModal(); $('cName').focus(); });
   $('cCancel').addEventListener('click', () => dlg.close());
   $('cPriv').addEventListener('change', (e) => {
     $('cPwWrap').hidden = !e.target.checked;
@@ -129,8 +137,8 @@
     $('cGo').disabled = true; $('cErr').textContent = '';
     const body = {
       name: $('cName').value.trim(), capacity: +$('cCap').value, expiryDays: +$('cExpiry').value,
-      private: $('cPriv').checked, password: $('cPw').value,
-      listed: $('cListed').checked, ownerOnlyClear: $('cOwner').checked,
+      private: $('cPriv').checked, password: $('cPw').value, listed: $('cListed').checked,
+      blurPreview: $('cBlur').checked, ownerOnlyClear: $('cOwner').checked,
     };
     try {
       const res = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

@@ -60,6 +60,8 @@ function normalizeRoom(id, v) {
     expiresAt: Number(o.expiresAt) || createdAt + 30 * DAY,
     capacity: clamp(Math.round(Number(o.capacity)) || DEFAULT_CAPACITY, 2, 100),
     listed: o.listed !== false,
+    blurPreview: !!o.blurPreview,
+    updatedAt: Number(o.updatedAt) || createdAt,
     ownerOnlyClear: !!o.ownerOnlyClear,
     ownerKey: typeof o.ownerKey === 'string' ? o.ownerKey : crypto.randomBytes(16).toString('hex'),
     pw: o.pw && o.pw.salt && o.pw.hash ? o.pw : null,
@@ -101,6 +103,34 @@ function makeId(name) {
   return slug + '-' + crypto.randomBytes(3).toString('hex');
 }
 
+// ---- Redo stacks (per user, in memory) and home-page previews ----
+const redoStacks = new Map(); // "roomId:clientId" -> [stroke]
+const touch = (r) => { r.updatedAt = Date.now(); };
+const previewCache = new Map(); // roomId -> { at, svg }
+
+// Draws the board as a small SVG for the home page. Private rooms and rooms with "blur preview" are blurred server-side,
+// so the raw preview URL never reveals the drawing.
+function buildPreview(r) {
+  const blur = r.blurPreview || !!r.pw;
+  const paths = [];
+  for (const s of r.strokes.slice(-1500)) {
+    const pts = s.points;
+    if (!pts || !pts.length) continue;
+    const step = Math.max(1, Math.ceil(pts.length / 120));
+    let d = 'M' + Math.round(pts[0][0]) + ' ' + Math.round(pts[0][1]);
+    if (pts.length === 1) d += 'l0 0';
+    for (let i = step; i < pts.length; i += step) d += 'L' + Math.round(pts[i][0]) + ' ' + Math.round(pts[i][1]);
+    const last = pts[pts.length - 1];
+    if ((pts.length - 1) % step) d += 'L' + Math.round(last[0]) + ' ' + Math.round(last[1]);
+    paths.push('<path d="' + d + '" stroke="' + (s.erase ? '#ffffff' : cleanColor(s.color)) + '" stroke-width="' + Math.max(1, Math.round(s.width)) + '"/>');
+  }
+  const g = '<g fill="none" stroke-linecap="round" stroke-linejoin="round">' + paths.join('') + '</g>';
+  const body = blur
+    ? '<defs><filter id="b" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="40"/></filter></defs><g filter="url(#b)">' + g + '</g>'
+    : g;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="800" height="500"><rect width="1600" height="1000" fill="#ffffff"/>' + body + '</svg>';
+}
+
 // ---- Auto-delete expired rooms ----
 function deleteExpired() {
   const now = Date.now();
@@ -108,6 +138,7 @@ function deleteExpired() {
   for (const [id, r] of rooms) {
     if (now >= r.expiresAt) {
       rooms.delete(id);
+      previewCache.delete(id);
       io.to(id).emit('room:gone');
       io.in(id).socketsLeave(id);
       changed = true;
@@ -129,7 +160,7 @@ app.get('/api/rooms', (req, res) => {
     .filter(([, r]) => r.listed)
     .map(([id, r]) => ({
       id, name: r.name, people: clientsIn(id).size, capacity: r.capacity,
-      private: !!r.pw, createdAt: r.createdAt, expiresAt: r.expiresAt,
+      private: !!r.pw, createdAt: r.createdAt, expiresAt: r.expiresAt, updatedAt: r.updatedAt,
     }))
     .sort((a, b) => b.createdAt - a.createdAt);
   res.json(list);
@@ -152,10 +183,19 @@ app.post('/api/rooms', (req, res) => {
   const now = Date.now();
   rooms.set(id, {
     name, createdAt: now, expiresAt: now + days * DAY, capacity, listed: b.listed !== false,
-    ownerOnlyClear: !!b.ownerOnlyClear, ownerKey, pw, strokes: [], messages: [],
+    ownerOnlyClear: !!b.ownerOnlyClear, blurPreview: !!b.blurPreview, updatedAt: now, ownerKey, pw, strokes: [], messages: [],
   });
   scheduleSave();
   res.status(201).json({ id, name, ownerKey });
+});
+
+app.get('/api/rooms/:id/preview.svg', (req, res) => {
+  const r = ID_RE.test(req.params.id) && rooms.get(req.params.id);
+  if (!r) return res.status(404).end();
+  let c = previewCache.get(req.params.id);
+  if (!c || c.at !== r.updatedAt) { c = { at: r.updatedAt, svg: buildPreview(r) }; previewCache.set(req.params.id, c); }
+  res.set('Cache-Control', 'public, max-age=300'); // the page asks with ?v=<updatedAt>, so a changed board gets a new URL
+  res.type('image/svg+xml').send(c.svg);
 });
 
 app.get('/b/:id', (req, res) => {
@@ -169,6 +209,7 @@ io.on('connection', (socket) => {
   let clientId = null;
   let isOwner = false;
   const room = () => (roomId ? rooms.get(roomId) : null);
+  const redoKey = () => roomId + ':' + clientId;
   const announce = () => {
     const r = room();
     if (r) io.to(roomId).emit('presence', { count: clientsIn(roomId).size, capacity: r.capacity });
@@ -214,6 +255,8 @@ io.on('connection', (socket) => {
       points: cleanPoints(s.points).slice(0, MAX_POINTS_PER_STROKE),
     };
     r.strokes.push(stroke);
+    redoStacks.delete(redoKey()); // drawing something new ends the redo history
+    touch(r);
     socket.to(roomId).emit('stroke:start', stroke);
     scheduleSave();
   });
@@ -226,6 +269,7 @@ io.on('connection', (socket) => {
     const pts = cleanPoints(msg.points).slice(0, MAX_POINTS_PER_STROKE - stroke.points.length);
     if (!pts.length) return;
     stroke.points.push(...pts);
+    touch(r);
     socket.to(roomId).emit('stroke:points', { id: stroke.id, points: pts });
     scheduleSave();
   });
@@ -237,6 +281,9 @@ io.on('connection', (socket) => {
     for (let i = r.strokes.length - 1; i >= 0; i--) {
       if (r.strokes[i].userId === clientId) {
         const [removed] = r.strokes.splice(i, 1);
+        const k = redoKey(); const st = redoStacks.get(k) || [];
+        st.push(removed); if (st.length > 50) st.shift(); redoStacks.set(k, st);
+        touch(r);
         io.to(roomId).emit('stroke:remove', removed.id);
         scheduleSave();
         break;
@@ -244,11 +291,25 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('redo', () => {
+    const r = room();
+    if (!r) return;
+    const stack = redoStacks.get(redoKey());
+    const stroke = stack && stack.pop();
+    if (!stroke || r.strokes.length >= MAX_STROKES_PER_ROOM) return;
+    r.strokes.push(stroke);
+    touch(r);
+    io.to(roomId).emit('stroke:add', stroke);
+    scheduleSave();
+  });
+
   socket.on('clear', () => {
     const r = room();
     if (!r) return;
     if (r.ownerOnlyClear && !isOwner) return socket.emit('notice', 'Only the room creator can clear this board.');
     r.strokes = [];
+    touch(r);
+    for (const k of redoStacks.keys()) if (k.startsWith(roomId + ':')) redoStacks.delete(k);
     io.to(roomId).emit('clear');
     scheduleSave();
   });

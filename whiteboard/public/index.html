@@ -3,25 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Whiteboard</title>
+<title>Towa’s Whiteboards</title>
+<link rel="icon" type="image/png" href="/images/favicon.png">
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<script>try{document.documentElement.dataset.theme=JSON.parse(localStorage.getItem('wb-settings')).theme||'dark'}catch(e){document.documentElement.dataset.theme='dark'}</script>
+<link rel="stylesheet" href="/theme.css">
 <style>
-  :root { --board:#fdfdfc; --tray:#1d2733; --ink:#e8edf2; --line:#3a4756; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--tray);
-         display: flex; align-items: center; justify-content: center; padding: 64px 16px 120px; }
+  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text);
+         display: flex; align-items: center; justify-content: center; padding: 64px 16px 140px; }
   @media (min-width: 1100px) { body.chat-open { padding-left: 304px; } body.chat-open .tray { left: calc(50% + 144px); } }
 
-  .back { position: fixed; top: 16px; left: 16px; z-index: 2; display: inline-flex; align-items: center; gap: 6px;
-          padding: 8px 12px; border-radius: 8px; text-decoration: none; color: var(--tray); background: var(--board); border: 1px solid #b8c0c8; }
-  .back:hover { background: #fff; }
-  .roomname { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); max-width: 30vw; z-index: 1; padding: 4px 12px;
-              border-radius: 8px; background: rgba(253,253,252,.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .back { position: fixed; top: 16px; left: 16px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
+          border-radius: 8px; text-decoration: none; color: var(--text); background: var(--surface-solid); border: 1px solid var(--border); }
+  .back:hover { background: var(--card-hover); }
+  .roomname { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); max-width: 40vw; z-index: 1; padding: 6px 16px;
+              border-radius: 10px; background: var(--surface); font-size: 18px; font-weight: 600; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; box-shadow: var(--shadow); }
   .roomname:empty { display: none; }
 
-  .stage { position: relative; width: min(100%, calc((100vh - 200px) * 1.6)); }
+  .stage { position: relative; width: min(100%, calc((100vh - 220px) * 1.6)); }
   canvas { display: block; width: 100%; aspect-ratio: 8 / 5; background-color: var(--board); border-radius: 6px;
-           box-shadow: 0 8px 24px rgba(29,39,51,.18); touch-action: none; cursor: crosshair; }
+           box-shadow: var(--shadow); touch-action: none; cursor: crosshair; }
   canvas.grid { background-image: linear-gradient(rgba(29,39,51,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(29,39,51,.09) 1px, transparent 1px);
                 background-size: 2.5% 4%; }
 
@@ -29,50 +33,57 @@
   .cursor { position: absolute; color: var(--c, #1d2733); transition: left .06s linear, top .06s linear; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
   .cursor svg { display: block; }
   .cursor .tag { position: absolute; left: 14px; top: 14px; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
-                 background: var(--tray); color: #fff; font-size: 12px; border: 2px solid var(--c, #1d2733); }
+                 background: #1d2733; color: #fff; font-size: 12px; border: 2px solid var(--c, #1d2733); }
   .cursors.no-names .tag { display: none; }
 
   .chat { position: fixed; left: 16px; top: 64px; bottom: 16px; width: 272px; z-index: 3; display: none; flex-direction: column;
-          background: rgba(253,253,252,.95); border-radius: 12px; box-shadow: 0 8px 24px rgba(29,39,51,.22); overflow: hidden; }
+          background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
   body.chat-open .chat { display: flex; }
-  .chat header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #dfe4e9; font-weight: 600; }
-  .chat header button, .chat-toggle { font: inherit; border: 1px solid #b8c0c8; background: #fff; color: var(--tray); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .chat header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .chat header button, .chat-toggle { font: inherit; border: 1px solid var(--border); background: var(--surface-solid); color: var(--text); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
   .msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
   .msg { overflow-wrap: anywhere; }
   .msg b { font-weight: 600; }
-  .msg time { margin-left: 6px; font-size: 11px; color: #7b8794; }
-  .msg.mine b { color: #2f6fed; }
+  .msg time { margin-left: 6px; font-size: 11px; color: var(--muted); }
+  .msg.mine b { color: var(--accent); }
   .msg p { margin: 0; }
-  .chat form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid #dfe4e9; }
-  .chat input { flex: 1; min-width: 0; padding: 8px 10px; font: inherit; border: 1px solid #b8c0c8; border-radius: 8px; }
-  .chat form button { font: inherit; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--tray); color: #fff; cursor: pointer; }
-  .chat-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 3; display: none; padding: 8px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
-  body:not(.chat-open) .chat-toggle { display: block; }
-  .unread { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: #e5484d; color: #fff; font-size: 12px; text-align: center; }
+  .chat form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--border); }
+  .chat input { flex: 1; min-width: 0; padding: 8px 10px; font: inherit; color: var(--field-text); background: var(--field); border: 1px solid var(--border); border-radius: 8px; }
+  .chat form button { font: inherit; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--primary); color: var(--primary-text); cursor: pointer; }
+  .chat-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 3; display: none; align-items: center; gap: 8px; padding: 8px 14px; box-shadow: var(--shadow); }
+  body:not(.chat-open) .chat-toggle { display: inline-flex; }
+  .unread { min-width: 18px; padding: 0 5px; border-radius: 9px; background: #e5484d; color: #fff; font-size: 12px; text-align: center; }
   .unread:empty { display: none; }
 
-  .tray { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 12px;
-          align-items: center; justify-content: center; background: var(--tray); color: var(--ink); padding: 10px 14px;
-          border-radius: 14px; max-width: calc(100% - 24px); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
-  .group { display: flex; gap: 8px; align-items: center; }
-  .sep { width: 1px; height: 22px; background: var(--line); }
-  .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; }
-  .swatch[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
-  button.tool { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
-  button.tool:hover { background: #2a3644; }
-  button.tool[aria-pressed="true"] { background: var(--ink); color: var(--tray); }
-  input[type=range] { width: 90px; accent-color: #7cb2ff; }
-  :focus-visible { outline: 2px solid #7cb2ff; outline-offset: 2px; }
-  .status { display: flex; align-items: center; gap: 6px; color: #9fb0c3; font-size: 13px; }
+  .tray { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 10px 12px;
+          align-items: center; justify-content: center; background: var(--surface-solid); color: var(--text); padding: 10px 14px;
+          border-radius: 14px; max-width: calc(100% - 24px); box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .group { display: flex; gap: 6px; align-items: center; }
+  .sep { width: 1px; height: 24px; background: var(--border); }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); padding: 0; cursor: pointer; }
+  .swatch[aria-pressed="true"], .wheel[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
+  .wheel { position: relative; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; display: inline-block;
+           background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  .wheel i { position: absolute; inset: 7px; border-radius: 50%; background: var(--pick, #fff); border: 1.5px solid #fff; }
+  .wheel input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; }
+  .wheel:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.tool { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; background: transparent; color: var(--text);
+                border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+  button.tool:hover { background: var(--card-hover); }
+  button.tool[aria-pressed="true"] { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+  button.tool.danger:hover { color: var(--danger); }
+  input[type=range] { width: 84px; accent-color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .status { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #e5534b; }
   .dot.on { background: #3fb950; }
 
-  .block { position: fixed; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; background: rgba(29,39,51,.6); }
-  .block > div { background: var(--board); padding: 24px 28px; border-radius: 12px; text-align: center; max-width: 340px; }
+  .block { position: fixed; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; background: rgba(10,14,20,.65); }
+  .block > div { background: var(--surface-solid); color: var(--text); padding: 24px 28px; border-radius: 12px; text-align: center; max-width: 340px; }
   .block h2 { margin: 0 0 6px; }
-  .block a { display: inline-block; margin-top: 8px; padding: 8px 14px; border-radius: 8px; background: var(--tray); color: #fff; text-decoration: none; }
-  .toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 8px 14px; border-radius: 8px;
-           background: var(--tray); color: #fff; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .block a { display: inline-block; margin-top: 8px; padding: 8px 14px; border-radius: 8px; background: var(--primary); color: var(--primary-text); text-decoration: none; }
+  .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 7; padding: 8px 14px; border-radius: 8px;
+           background: var(--surface-solid); color: var(--text); border: 1px solid var(--border); opacity: 0; pointer-events: none; transition: opacity .2s; }
   .toast.show { opacity: 1; }
 </style>
 </head>
@@ -85,7 +96,7 @@
     <div class="msgs" id="msgs" aria-live="polite"></div>
     <form id="chatForm"><input id="chatInput" maxlength="300" placeholder="Message the room" autocomplete="off" aria-label="Chat message"><button type="submit">Send</button></form>
   </aside>
-  <button class="chat-toggle" id="chatToggle" type="button">Chat<span class="unread" id="unread"></span></button>
+  <button class="chat-toggle" id="chatToggle" type="button"><span id="chatIcon"></span>Chat<span class="unread" id="unread"></span></button>
 
   <div class="stage">
     <canvas id="board" aria-label="Shared whiteboard"></canvas>
@@ -93,14 +104,13 @@
   </div>
 
   <div class="tray" role="toolbar" aria-label="Drawing tools">
-    <div class="group" id="swatches"></div>
+    <div class="group" id="tools"></div>
     <div class="sep"></div>
-    <div class="group"><label for="size">Size</label><input id="size" type="range" min="2" max="24" value="4"></div>
-    <button class="tool" id="eraser" aria-pressed="false">Eraser</button>
+    <div class="group" id="colors"></div>
     <div class="sep"></div>
-    <button class="tool" id="undo">Undo</button>
-    <button class="tool" id="clear">Clear board</button>
-    <button class="tool" id="copy">Copy link</button>
+    <div class="group"><label class="sr" for="size">Brush size</label><input id="size" type="range" min="2" max="24" value="4" title="Brush size"></div>
+    <div class="sep"></div>
+    <div class="group" id="actions"></div>
     <div class="sep"></div>
     <div class="status"><span class="dot" id="dot"></span><span id="people">connecting</span></div>
   </div>
@@ -121,7 +131,22 @@
 <script>
 (() => {
   const W = 1600, H = 1000;
-  const COLORS = ['#1d2733', '#e5484d', '#f5a524', '#2f9e6f', '#2f6fed', '#8b5cf6'];
+  const COLORS = ['#1d2733', '#6b7280', '#e5484d', '#f97316', '#f5a524', '#facc15', '#84cc16', '#2f9e6f', '#06b6d4', '#2f6fed', '#8b5cf6', '#ec4899', '#a16207'];
+  const PATHS = {
+    pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+    eraser: '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+    line: '<path d="M5 19L19 5"/>',
+    rect: '<rect x="3" y="5" width="18" height="14" rx="2"/>',
+    ellipse: '<circle cx="12" cy="12" r="9"/>',
+    undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+    redo: '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    check: '<path d="M20 6L9 17l-5-5"/>',
+    chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  };
+  const svg = (k) => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + PATHS[k] + '</svg>';
   const $ = (id) => document.getElementById(id);
   const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
   const ss = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} } };
@@ -134,9 +159,10 @@
 
   let strokes = [];
   const byId = new Map();
-  let color = COLORS.includes(WB.get('penColor')) ? WB.get('penColor') : COLORS[0];
+  let color = /^#[0-9a-f]{6}$/i.test(WB.get('penColor')) ? WB.get('penColor') : COLORS[0];
   let size = WB.get('penSize') || 4;
-  let erasing = false;
+  let tool = 'pen';
+  let roomName = '';
   let lastPos = [W / 2, H / 2];
 
   // ---------- rendering (transparent canvas, so the eraser really erases and the grid shows through) ----------
@@ -168,8 +194,7 @@
     clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2800);
   }
   function showBlock(title, text) {
-    document.body.insertAdjacentHTML('beforeend',
-      '<div class="block"><div><h2></h2><p></p><a href="/">Back to home</a></div></div>');
+    document.body.insertAdjacentHTML('beforeend', '<div class="block"><div><h2></h2><p></p><a href="/">Back to home</a></div></div>');
     const box = document.querySelector('.block:last-of-type');
     box.querySelector('h2').textContent = title; box.querySelector('p').textContent = text;
   }
@@ -196,8 +221,8 @@
     $('pwDlg').close(); join();
   });
 
-  socket.on('init', ({ strokes: serverStrokes, messages, name: roomName }) => {
-    if (roomName) { $('roomname').textContent = roomName; document.title = roomName + ' - Whiteboard'; }
+  socket.on('init', ({ strokes: serverStrokes, messages, name }) => {
+    if (name) { roomName = name; $('roomname').textContent = name; document.title = name + ' - Towa’s Whiteboards'; }
     // Re-send anything I drew that the server never received (offline or dropped connection).
     const known = new Set(serverStrokes.map((s) => s.id));
     const mine = strokes.filter((s) => s.userId === clientId && !known.has(s.id));
@@ -208,6 +233,7 @@
   });
   socket.on('presence', ({ count, capacity }) => { $('people').textContent = count + ' of ' + capacity + ' here'; });
   socket.on('stroke:start', (s) => { strokes.push(s); byId.set(s.id, s); drawFrom(s, 0); });
+  socket.on('stroke:add', (s) => { if (byId.has(s.id)) return; strokes.push(s); byId.set(s.id, s); drawFrom(s, 0); });   // redo
   socket.on('stroke:points', ({ id, points }) => {
     const s = byId.get(id); if (!s) return;
     const start = s.points.length; s.points.push(...points); drawFrom(s, start);
@@ -236,29 +262,107 @@
     el.dataset.t = Date.now();
   });
   socket.on('cursor:gone', (id) => { const el = cursors.get(id); if (el) el.remove(); cursors.delete(id); });
-  setInterval(() => {                                          // drop cursors that went quiet
+  setInterval(() => {
     for (const [id, el] of cursors) if (Date.now() - +el.dataset.t > 20000) { el.remove(); cursors.delete(id); }
   }, 5000);
 
+  // ---------- tools and the mouse cursor that matches them ----------
+  const TOOLS = [
+    { id: 'pen', label: 'Pen', key: 'P' }, { id: 'eraser', label: 'Eraser', key: 'E' },
+    { id: 'line', label: 'Line', key: 'L' }, { id: 'rect', label: 'Rectangle', key: 'R' }, { id: 'ellipse', label: 'Ellipse', key: 'O' },
+  ];
+  const isShape = (t) => t === 'line' || t === 'rect' || t === 'ellipse';
+  function cursorUrl(inner, stroke, hx, hy) {
+    const s = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+      '<g stroke="#fff" stroke-width="4.6">' + inner + '</g><g stroke="' + stroke + '" stroke-width="2">' + inner + '</g></svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(s) + '") ' + hx + ' ' + hy + ', crosshair';
+  }
+  function updateCursor() {
+    canvas.style.cursor = tool === 'pen' ? cursorUrl(PATHS.pen, color, 4, 23)
+                        : tool === 'eraser' ? cursorUrl(PATHS.eraser, '#1d2733', 14, 16)
+                        : 'crosshair';
+  }
+  function setTool(t) {
+    tool = t;
+    $('tools').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tool === t));
+    updateCursor();
+  }
+  function iconButton(label, icon, onClick, extra) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tool' + (extra && extra.cls ? ' ' + extra.cls : '');
+    b.setAttribute('aria-label', label); b.title = label + (extra && extra.key ? ' (' + extra.key + ')' : '');
+    b.innerHTML = svg(icon); b.onclick = onClick;
+    return b;
+  }
+  TOOLS.forEach((t) => {
+    const b = iconButton(t.label, t.id, () => setTool(t.id), { key: t.key });
+    b.dataset.tool = t.id; b.setAttribute('aria-pressed', t.id === tool);
+    $('tools').appendChild(b);
+  });
+
+  // ---------- colours: swatches + colour wheel ----------
+  const colorBox = $('colors');
+  const wheel = document.createElement('label');
+  wheel.className = 'wheel'; wheel.title = 'Custom colour';
+  wheel.innerHTML = '<i></i><input type="color" aria-label="Custom colour">';
+  const picker = wheel.querySelector('input');
+  function paintColors() {
+    colorBox.querySelectorAll('.swatch').forEach((x) => x.setAttribute('aria-pressed', x.dataset.c === color));
+    wheel.setAttribute('aria-pressed', !COLORS.includes(color));
+    wheel.style.setProperty('--pick', color); picker.value = color;
+  }
+  function pickColor(c) {
+    color = c; if (tool === 'eraser') setTool('pen');
+    WB.set('penColor', c); paintColors(); updateCursor();
+  }
+  COLORS.forEach((c) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.dataset.c = c; b.style.background = c; b.setAttribute('aria-label', 'Colour ' + c);
+    b.onclick = () => pickColor(c);
+    colorBox.appendChild(b);
+  });
+  colorBox.appendChild(wheel);
+  picker.addEventListener('input', () => pickColor(picker.value));
+  paintColors();
+
+  $('size').value = size;
+  $('size').oninput = (e) => { size = +e.target.value; WB.set('penSize', size); };
+
   // ---------- drawing input ----------
-  let current = null, pending = [], flushTimer = null, lastCursor = 0;
+  let current = null, pending = [], flushTimer = null, lastCursor = 0, shapeStart = null;
   const pos = (e) => {
     const r = canvas.getBoundingClientRect();
     return [Math.round((e.clientX - r.left) / r.width * W), Math.round((e.clientY - r.top) / r.height * H)];
   };
   function sendCursor(p) {
     lastPos = p;
-    socket.emit('cursor', { x: p[0], y: p[1], color: erasing ? '#9aa5b1' : color, name: WB.name() });
+    socket.emit('cursor', { x: p[0], y: p[1], color: tool === 'eraser' ? '#9aa5b1' : color, name: WB.name() });
   }
   function flush() {
     flushTimer = null;
     if (current && pending.length) { socket.emit('stroke:points', { id: current.id, points: pending }); pending = []; }
   }
+  function shapePoints(kind, a, b, shift) {
+    const [x0, y0] = a; let [x1, y1] = b;
+    if (shift) {                                       // Shift: straight 45-degree lines, perfect squares and circles
+      const dx = x1 - x0, dy = y1 - y0;
+      if (kind === 'line') { const ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), len = Math.hypot(dx, dy); x1 = x0 + Math.cos(ang) * len; y1 = y0 + Math.sin(ang) * len; }
+      else { const m = Math.max(Math.abs(dx), Math.abs(dy)); x1 = x0 + (dx < 0 ? -m : m); y1 = y0 + (dy < 0 ? -m : m); }
+    }
+    const r = Math.round;
+    if (kind === 'line') return [[r(x0), r(y0)], [r(x1), r(y1)]];
+    if (kind === 'rect') return [[r(x0), r(y0)], [r(x1), r(y0)], [r(x1), r(y1)], [r(x0), r(y1)], [r(x0), r(y0)]];
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = Math.abs(x1 - x0) / 2, ry = Math.abs(y1 - y0) / 2, pts = [];
+    for (let i = 0; i <= 72; i++) { const t = i / 72 * Math.PI * 2; pts.push([r(cx + Math.cos(t) * rx), r(cy + Math.sin(t) * ry)]); }
+    return pts;
+  }
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
-    current = { id: crypto.randomUUID(), userId: clientId, color: erasing ? '#000000' : color,
-                width: erasing ? size * 4 : size, erase: erasing, points: [pos(e)] };
+    const p = pos(e), eraser = tool === 'eraser';
+    current = { id: crypto.randomUUID(), userId: clientId, color: eraser ? '#000000' : color,
+                width: eraser ? size * 4 : size, erase: eraser, points: [p] };
     strokes.push(current); byId.set(current.id, current);
+    if (isShape(tool)) { shapeStart = p; return; }      // shapes are sent when you let go
     socket.emit('stroke:start', current);
     drawFrom(current, 0);
   });
@@ -266,46 +370,63 @@
     const p = pos(e), now = performance.now();
     if (now - lastCursor > 40) { lastCursor = now; sendCursor(p); }
     if (!current) return;
+    if (shapeStart) { current.points = shapePoints(tool, shapeStart, p, e.shiftKey); redraw(); return; }
     const start = current.points.length;
     current.points.push(p); drawFrom(current, start); pending.push(p);
     if (!flushTimer) flushTimer = setTimeout(flush, 40);       // batch: ~25 messages/sec max
   });
-  const end = () => { if (!current) return; flush(); current = null; };
+  const end = () => {
+    if (!current) return;
+    if (shapeStart) {
+      if (current.points.length > 1) socket.emit('stroke:start', current);
+      else { strokes = strokes.filter((s) => s !== current); byId.delete(current.id); }
+      shapeStart = null;
+    } else flush();
+    current = null;
+  };
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
 
-  // ---------- toolbar (pen color and size are remembered) ----------
-  const swatchBox = $('swatches');
-  COLORS.forEach((c) => {
-    const b = document.createElement('button');
-    b.className = 'swatch'; b.style.background = c; b.setAttribute('aria-label', 'Colour ' + c);
-    b.setAttribute('aria-pressed', c === color);
-    b.onclick = () => {
-      color = c; setErasing(false); WB.set('penColor', c);
-      swatchBox.querySelectorAll('.swatch').forEach((x) => x.setAttribute('aria-pressed', x === b));
-    };
-    swatchBox.appendChild(b);
-  });
-  $('size').value = size;
-  $('size').oninput = (e) => { size = +e.target.value; WB.set('penSize', size); };
-  const eraserBtn = $('eraser');
-  function setErasing(v) { erasing = v; eraserBtn.setAttribute('aria-pressed', v); }
-  eraserBtn.onclick = () => setErasing(!erasing);
+  // ---------- actions ----------
   const undo = () => socket.emit('undo');
-  $('undo').onclick = undo;
-  $('clear').onclick = () => { if (confirm('Clear the board for everyone in this room?')) socket.emit('clear'); };
-  $('copy').onclick = async () => {
-    const b = $('copy');
-    try { await navigator.clipboard.writeText(location.href); b.textContent = 'Link copied'; } catch { b.textContent = 'Copy failed'; }
-    setTimeout(() => (b.textContent = 'Copy link'), 1500);
-  };
+  const redo = () => socket.emit('redo');
+  function download() {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H); x.drawImage(canvas, 0, 0);
+    c.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = ((roomName || 'whiteboard').replace(/[^\w -]+/g, '').trim() || 'whiteboard') + '.png';
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+  }
+  const actions = $('actions');
+  actions.append(
+    iconButton('Undo', 'undo', undo, { key: 'Ctrl+Z' }),
+    iconButton('Redo', 'redo', redo, { key: 'Ctrl+Y' }),
+    iconButton('Clear board', 'trash', () => { if (confirm('Clear the board for everyone in this room?')) socket.emit('clear'); }, { cls: 'danger' }),
+    iconButton('Download as PNG', 'download', download),
+  );
+  const copyBtn = iconButton('Copy link', 'link', async () => {
+    try { await navigator.clipboard.writeText(location.href); toast('Link copied'); copyBtn.innerHTML = svg('check'); }
+    catch { toast('Could not copy the link'); }
+    setTimeout(() => (copyBtn.innerHTML = svg('link')), 1500);
+  });
+  actions.appendChild(copyBtn);
+
   addEventListener('keydown', (e) => {
     if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+    const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+    if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+    if (mod || e.altKey) return;
+    const t = TOOLS.find((x) => x.key.toLowerCase() === k);
+    if (t) setTool(t.id);
   });
 
   // ---------- chat ----------
   let unread = 0;
+  $('chatIcon').innerHTML = svg('chat');
   const chatOpen = () => document.body.classList.contains('chat-open');
   function addMsg(m, quiet) {
     const box = $('msgs');
@@ -343,6 +464,7 @@
   }
   WB.onChange(applySettings);
   applySettings();
+  updateCursor();
 })();
 </script>
 </body>

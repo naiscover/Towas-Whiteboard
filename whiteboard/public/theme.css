@@ -1,0 +1,97 @@
+/* Dark is the default. The sidebar switches html[data-theme] between "dark" and "light". */
+:root, html[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #151b23;
+  --surface: rgba(24, 31, 41, .94);
+  --surface-solid: #1d2733;
+  --card: #263344;
+  --card-hover: #2f3e52;
+  --text: #e8edf2;
+  --muted: #9fb0c3;
+  --border: #3a4756;
+  --field: #2a3644;
+  --field-text: #e8edf2;
+  --accent: #7cb2ff;
+  --primary: #e8edf2;
+  --primary-text: #1d2733;
+  --danger: #ff9b92;
+  --notice-bg: #4a3a12;
+  --notice-text: #ffd98a;
+  --shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+html[data-theme="light"] {
+  color-scheme: light;
+  --page: #d8dde2;
+  --surface: rgba(253, 253, 252, .94);
+  --surface-solid: #fdfdfc;
+  --card: #ffffff;
+  --card-hover: #f1f4f7;
+  --text: #1d2733;
+  --muted: #5b6773;
+  --border: #cfd6dd;
+  --field: #ffffff;
+  --field-text: #1d2733;
+  --accent: #2f6fed;
+  --primary: #1d2733;
+  --primary-text: #ffffff;
+  --danger: #b42318;
+  --notice-bg: #fff3d6;
+  --notice-text: #6b4a00;
+  --shadow: 0 8px 24px rgba(29, 39, 51, .18);
+}
+:root { --board: #fdfdfc; }              /* the drawing surface is always white */
+
+html { background: var(--page); }
+body { background: transparent !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* blurred page background */
+.wb-bg { position: fixed; inset: -60px; z-index: -1; background-size: cover; background-position: center; }
+
+/* hover-out settings sidebar */
+.wb-side { position: fixed; top: 0; right: 0; bottom: 0; width: 272px; z-index: 4; background: var(--surface-solid); color: var(--text);
+  transform: translateX(100%); transition: transform .22s ease; box-shadow: -8px 0 24px rgba(0,0,0,.25);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wb-side:hover, .wb-side:focus-within, .wb-side.open { transform: none; }
+.wb-handle { position: absolute; left: -30px; top: 50%; transform: translateY(-50%); width: 30px; height: 96px; border: 0;
+  border-radius: 10px 0 0 10px; background: var(--surface-solid); color: var(--text); cursor: pointer; display: grid; place-items: center;
+  box-shadow: -4px 0 12px rgba(0,0,0,.2); }
+.wb-scroll { height: 100%; overflow-y: auto; padding: 20px 18px; }
+.wb-side h2 { margin: 0 0 12px; font-size: 18px; }
+.wb-side h3 { margin: 18px 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.wb-side label { display: block; margin: 8px 0; }
+.wb-side .wb-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.wb-side input[type=text] { width: 100%; margin-top: 4px; padding: 7px 10px; font: inherit; color: var(--field-text);
+  background: var(--field); border: 1px solid var(--border); border-radius: 8px; }
+.wb-side input[type=range] { width: 100%; accent-color: var(--accent); }
+.wb-side .wb-check { display: flex; gap: 8px; align-items: center; }
+.wb-side button.wb-small { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.wb-side button.wb-small:hover { background: var(--card-hover); }
+.wb-seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.wb-seg button { flex: 1; padding: 6px 10px; font: inherit; background: transparent; color: var(--text); border: 0; cursor: pointer; }
+.wb-seg button[aria-pressed="true"] { background: var(--primary); color: var(--primary-text); }
+.wb-note { margin: 14px 0 0; color: var(--muted); font-size: 12px; }
+.wb-side :focus-visible, .wb-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* dialogs */
+dialog.wb-dialog { border: 0; border-radius: 14px; padding: 22px 24px; background: var(--surface-solid); color: var(--text);
+  width: min(420px, calc(100% - 32px)); max-height: calc(100vh - 32px); box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+dialog.wb-dialog::backdrop { background: rgba(10, 14, 20, .6); backdrop-filter: blur(3px); }
+.wb-dialog h2 { margin: 0 0 6px; font-size: 20px; }
+.wb-dialog p { margin: 0 0 12px; color: var(--muted); }
+.wb-dialog label.wb-field { display: block; margin-top: 12px; font-weight: 600; }
+.wb-dialog .wb-field input, .wb-dialog .wb-field select { display: block; width: 100%; margin-top: 4px; padding: 9px 12px; font: inherit;
+  font-weight: 400; color: var(--field-text); background: var(--field); border: 1px solid var(--border); border-radius: 8px; }
+.wb-dialog label.wb-check { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-weight: 400; }
+.wb-dialog .wb-check input { margin-top: 3px; accent-color: var(--accent); }
+.wb-dialog .wb-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.wb-dialog .wb-btn { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent;
+  color: var(--text); cursor: pointer; text-decoration: none; }
+.wb-dialog .wb-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+.wb-dialog .wb-btn:disabled { opacity: .6; cursor: default; }
+.wb-dialog .wb-err { color: var(--danger); margin: 10px 0 0; }
+.wb-dialog .wb-err:empty { display: none; }
+.wb-dialog :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .wb-side { transition: none; } }

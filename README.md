@@ -1,0 +1,2 @@
+# CollabWhiteboard
+A real-time collaborative whiteboard. Anyone with a room link can draw on the same board at the same time, see each other’s cursors, and undo their own strokes without affecting anyone else’s. The server keeps the authoritative board state, batches stroke updates to keep traffic low, and re-syncs clients automatically after a dropped connection, including strokes drawn while offline. Boards are persisted so you can reopen a room later.

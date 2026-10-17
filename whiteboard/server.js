@@ -152,6 +152,8 @@ setInterval(deleteExpired, CLEANUP_EVERY_MS);
 // ---- HTTP ----
 app.use(express.json({ limit: '4kb' }));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+// Browsers ask for /favicon.ico on their own, so point that at the PNG too
+app.get('/favicon.ico', (req, res) => res.redirect(302, '/images/favicon.png?v=2'));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 
 app.get('/api/rooms', (req, res) => {
